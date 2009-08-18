@@ -207,8 +207,10 @@ then echo  >&2 "Un/Tag what? Run 'tag -h' for usage information"
 fi
 
 ## Determining the exact absolute path to the file
-[[ "${filename##/*}" ]] && filename="./$filename"  # was a relative path
-
+while [[ "$filename" != "${filename%/}" ]]  # Oh, damn the trailing slashes
+do filename="${filename%/}"
+done
+[[ "${filename##/*}" ]] && filename="./$filename" # A relative path
 if (cd "${filename%/*}")
 then filename="`cd \"${filename%/*}\"; pwd -P`/${filename##*/}"
 else echo >&2 "Cannot reach the directory of $filename"
@@ -334,12 +336,13 @@ do
         else fn_dirs[${#fn_dirs[@]}]="$dir"
         fi
     done
-    rel_path="`breadcrumbs $((${#tb_dirs[@]} - $i))`/${fn_dirs[*]}/${filename##*/}"
+    ((${#fn_dirs[@]} > 0)) && fn_dirs[${#fn_dirs[@]}]=''  # Cunning, eh?
+    rel_path="`breadcrumbs $((${#tb_dirs[@]} - $i))`/${fn_dirs[*]}${filename##*/}"
     unset IFS
 
 ### Determine the taglink name (and the current tags)
     IFS='/'
-    for taglink in `ls "$tb/${filename##*/}"* 2> /dev/null`
+    for taglink in `ls -d "$tb/${filename##*/}"* 2> /dev/null`
     do  
         tmp_tgt="`readlink \"$tb/${taglink##*/}\"`"
         old_tags=(${tmp_tgt%/*})
@@ -348,6 +351,7 @@ do
         then mainlink="${taglink##*/}"
             break
         fi
+        unset old_tags
     done
     unset IFS
 
@@ -364,7 +368,7 @@ do
     if [[ ! "$mainlink" ]]
     then # TODO smarter taglink naming
         taglink="${filename##*/}"
-        for (( i = 0; i < 1000000; i++ ))
+        for (( i = 2; i < 1000000; i++ ))
         do if [ ! -e "$tb/$taglink" ]
             then mainlink="$taglink"
                 break
@@ -441,4 +445,12 @@ do  if [[ "`cat \"$tb/lock.pid\"`" != "$$" ]] ||
     fi
 done
 
-exit $err
+
+# REPORT
+
+if [[ ! $err ]]
+then for tag in "${all_tags[@]}"
+    do  [[ "${tag:0:1}" == '-' ]] && echo "${tag:1}"
+    done
+else exit $err
+fi
