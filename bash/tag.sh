@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# You may want to skip to the INSTALL/UPDATE section below
+
 # INTRODUCING TagFSx :-)
 # A convention (rather than a system) - backed by this rather POC script -
 # providing tagged file system environment for shelling and applications
@@ -102,12 +104,24 @@
 # TODO
 # TAGDEPTH variable to limit the tagbase directory hierarchy depth
 #
-## Aliases?
-# untag: tag -u
 # tagls: pipes through ls adding tag information and removing TBs from listing
 # tagmv FILENAME1 FILENAME2: tag FILENAME2 `untag FILENAME1`; mv FILENAME1 FILENAME2
 # tagcp FILENAME1 FILENAME2: tag FILENAME2 `tag FILENAME1`; cp -R FILENAME1 FILENAME2
 # tagrm FILENAME: untag FILENAME; rm -R FILENAME
+#
+#
+# INSTALL/UPDATE
+# instructions for OSX, you may want to use a different prefix on your OS
+# you must have shebang_alias
+#
+# sudo cp tag.sh /usr/share/ && sudo ln -s /usr/share/tag.sh /usr/bin/tag && echo '#!/bin/sh^/usr/bin/tag -u "$@"' | tr ^ '\n' | sudo dd of=/usr/bin/untag 2> /dev/null && sudo chmod a+x /usr/share/tag.sh /usr/bin/untag
+#
+#
+# UNINSTALL
+# instructions for OSX, you may want to use a different prefix on your OS
+#
+# sudo rm /usr/bin/tag /usr/bin/untag /usr/share/tag.sh
+
 
 # source permute_func.sh
 # Usage: permute cmd opt_idx el...
@@ -202,16 +216,15 @@ shift $(($OPTIND - 1))
 filename="$1"; shift
 
 if [[ ! "$filename" ]]
-then echo  >&2 "Un/Tag what? Run 'tag -h' for usage information"
+then echo >&2 "Un/Tag what? Run 'tag -h' for usage information"
     exit 1
 fi
 
 ## Determining the exact absolute path to the file
-while [[ "$filename" != "${filename%/}" ]]  # Oh, damn the trailing slashes
-do filename="${filename%/}"
-done
 [[ "${filename##/*}" ]] && filename="./$filename" # A relative path
-if (cd "${filename%/*}")
+if (cd "$filename" 2> /dev/null)
+then filename="`cd \"$filename\"; pwd -P`"
+elif [[ "${filename##*/}" != '.' &&  "${filename##*/}" != '..' ]] && (cd "${filename%/*}" 2> /dev/null)
 then filename="`cd \"${filename%/*}\"; pwd -P`/${filename##*/}"
 else echo >&2 "Cannot reach the directory of $filename"
     exit 2
@@ -270,6 +283,11 @@ do  if [[ -w "$tb" || -e "$tb/lock.pid" ]]
         err=3  # TODO warning
     fi
 done
+
+
+(( ${#act_tbs[@]} == 0 )) && \
+    echo >&2 "No tagbases found (or created) and locked, boring!" && \
+    err=2
 
 
 if [[ ! $err ]]
@@ -380,6 +398,7 @@ do
 ## Unify the existing and the new tags to create the all_tags list
 # where tags to be really removed/appended are prefixed by -/+ character
     all_tags=()
+    new_tags=()
     if [[ $untag ]]
     then for tag in "${old_tags[@]}"
         do  for rm_tag
@@ -441,7 +460,7 @@ do  if [[ "`cat \"$tb/lock.pid\"`" != "$$" ]] ||
         ! rm "$tb/lock.pid" ||
         ! chmod u-w "$tb"
     then echo >&2 "Error unlocking $tb!"
-        err=2  # TODO warning
+        err=2
     fi
 done
 
