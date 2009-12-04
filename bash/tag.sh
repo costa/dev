@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # You may want to skip to the INSTALL/UPDATE section below
 
@@ -29,46 +29,62 @@
 #          Tagging rules.txt          - a note
 #
 #$ cd ~/pub                           # gone to the pub
-#$ tag -C "notes/Tagging rules".txt tagging 'personal infomgmt' rules
+#$ tag -C "notes/Tagging rules.txt" tagging 'personal infomgmt' rules
 #
 # ~/
 #  pub/
 #     #/
-#      personal infomgmt/        - a tag
+#      personal infomgmt/        <-- a tag --
 #                       rules/
 #                            tagging/
-#                                   Tagging rules.txt -> ../../../Tagging rules.txt
-#                            Tagging rules.txt -> ../../Tagging rules.txt
+#                                   #/
+#                                    Tagging rules.txt -> ../../../../#/Tagging rules.txt
+#                            #/
+#                             Tagging rules.txt -> ../../../#/Tagging rules.txt
 #                       tagging/
 #                              rules/
-#                                   Tagging rules.txt -> ../../../Tagging rules.txt
-#                              Tagging rules.txt -> ../../Tagging rules.txt
-#                       Tagging rules.txt -> ../Tagging rules.txt
-#      rules/                    - another tag
+#                                   #/
+#                                    Tagging rules.txt -> ../../../../#/Tagging rules.txt
+#                              #/
+#                               Tagging rules.txt -> ../../../#/Tagging rules.txt
+#                       #/
+#                        Tagging rules.txt -> ../../#/Tagging rules.txt
+#      rules/                    <-- another tag --
 #           personal infomgmt/
 #                            tagging/
-#                                   Tagging rules.txt -> ../../../Tagging rules.txt
-#                            Tagging rules.txt -> ../../Tagging rules.txt
+#                                   #/
+#                                    Tagging rules.txt -> ../../../../#/Tagging rules.txt
+#                            #/
+#                             Tagging rules.txt -> ../../../#/Tagging rules.txt
 #           tagging/
 #                  personal infomgmt/
-#                                   Tagging rules.txt -> ../../../Tagging rules.txt
-#                  Tagging rules.txt -> ../../Tagging rules.txt
-#           Tagging rules.txt -> ../Tagging rules.txt
-#      tagging/                  - yet another tag
+#                                   #/
+#                                    Tagging rules.txt -> ../../../../#/Tagging rules.txt
+#                  #/
+#                   Tagging rules.txt -> ../../../#/Tagging rules.txt
+#           #/
+#            Tagging rules.txt -> ../../#/Tagging rules.txt
+#      tagging/                  <-- yet another tag --
 #             personal infomgmt/
 #                              rules/
-#                                   Tagging rules.txt -> ../../../../notes/Tagging rules.txt
-#                              Tagging rules.txt -> ../../Tagging rules.txt
+#                                   #/
+#                                    Tagging rules.txt -> ../../../../../notes/Tagging rules.txt
+#                              #/
+#                               Tagging rules.txt -> ../../../#/Tagging rules.txt
 #             rules/
 #                  personal infomgmt/
-#                                   Tagging rules.txt -> ../../../Tagging rules.txt
-#                  Tagging rules.txt -> ../../Tagging rules.txt
-#             Tagging rules.txt -> ../Tagging rules.txt
-#      Tagging rules.txt -> tagging/personal infomgmt/rules/Tagging rules.txt
+#                                   #/
+#                                    Tagging rules.txt -> ../../../../#/Tagging rules.txt
+#                  #/
+#                   Tagging rules.txt -> ../../../#/Tagging rules.txt
+#             #/
+#              Tagging rules.txt -> ../../#/Tagging rules.txt
+#      #/
+#       Tagging rules.txt -> ../tagging/personal infomgmt/rules/#/Tagging rules.txt
 #     notes/
 #          Tagging rules.txt
 #
-# Yes, there are 31 directories and symlinks created in a single tagbase for
+# Yes, there are 48 directories and symlinks created in a single tagbase for
 # a single file with three tags, but you see, no magic here...
 #
 # Whew! Well, sorry for that factorial explosion, but here's how it works,
@@ -102,6 +118,10 @@
 # 255 - an unknown (bug) or rather development-work-in-progress error
 #
 # TODO
+#
+# FS operations aren't currently safe or verified
+# See TBD below
+#
 # TAGDEPTH variable to limit the tagbase directory hierarchy depth
 #
 # tagls: pipes through ls adding tag information and removing TBs from listing
@@ -111,16 +131,21 @@
 #
 #
 # INSTALL/UPDATE
-# instructions for OSX, you may want to use a different prefix on your OS
-# you must have shebang_alias
+# set your prefix first, then run the long line below from the source directory
 #
-# sudo cp tag.sh /usr/share/ && sudo ln -s /usr/share/tag.sh /usr/bin/tag && echo '#!/bin/sh^/usr/bin/tag -u "$@"' | tr ^ '\n' | sudo dd of=/usr/bin/untag 2> /dev/null && sudo chmod a+x /usr/share/tag.sh /usr/bin/untag
+# PREFIX=$HOME       # or # PREFIX=$HOME/local  # -- locally, without sudo!
+# PREFIX=/usr        # On Darwin
+# PREFIX=/usr/local  # On a common UNIX
+# sudo bash -c "cp tag.sh $PREFIX/share/ && ln -s $PREFIX/share/tag.sh $PREFIX/bin/tag && echo '#"'!'"/bin/sh^$PREFIX/bin/tag -u \"\$@\"' | tr ^ '\n' | dd of=$PREFIX/bin/untag 2> /dev/null && chmod a+x $PREFIX/share/tag.sh $PREFIX/bin/untag"
 #
 #
 # UNINSTALL
-# instructions for OSX, you may want to use a different prefix on your OS
+# set your prefix first, then run the line below
 #
-# sudo rm /usr/bin/tag /usr/bin/untag /usr/share/tag.sh
+# PREFIX="$HOME"     # locally
+# PREFIX=/usr        # On Darwin
+# PREFIX=/usr/local  # On a common UNIX
+# sudo rm $PREFIX/bin/tag $PREFIX/bin/untag $PREFIX/share/tag.sh
 
 
 # source permute_func.sh
@@ -136,6 +161,21 @@ function permute() {
     fi
 }
 
+function errcho() {
+    echo >&2 "$@"
+}
+
+# Shout and shell out
+function shout() {
+    [[ $debug ]] && errcho "$@"
+    "$@"
+}
+function shout-q() {
+    if [[ $debug ]]
+    then shout "$@"
+    else "$@" 2> /dev/null
+    fi
+}
 
 # bread crumbs anyone?
 function breadcrumbs() {
@@ -152,9 +192,9 @@ function breadcrumbs() {
 # CONFIG
 
 force=0
-logl=1
-sort=not
-tb_dir='#'
+sort="not"  # TODO
+tag_sym='#'
+tb_dir="$tag_sym"
 
 all_opts=$TAGOPT
 all_opts=($all_opts '')
@@ -175,7 +215,7 @@ Options: (WIP)
  TBD   -F    fail on the first warning (instead of going interactive)
  TBD   -f[f] force on the first warning, on all of the warnings
        -h    print this and exit
- TBD   -Q    print all commands and comments (debug or paranoia or just fancy)
+       -Q    print all commands and comments (debug or paranoia or just fancy)
  TBD   -q[q] be quiet, -er (will still print warnings if going interactive)
  TBD   -s[s] sort tags alphabethically, sort tags by popularity
        -u    The equivalent of the untag command, not applicable to the latter
@@ -191,10 +231,12 @@ Notes:
 EOF
                 [[ "$o" == "h" ]] && exit
                 exit 1;;
-            A)
-                one_tb=1;;
-            C)
-                cwd_tb=1;;
+        A)
+                one_tb="1";;
+        C)
+                cwd_tb="1";;
+        Q)
+                debug=t;;
 	    f)
                 if [[ $f_was ]]
                 then force=1000000 # reasonable infinity
@@ -203,11 +245,11 @@ EOF
                 fi;;
 	    s)
                 if [[ $s_was ]]
-                then sort=pop
-                else sort=abc
+                then sort="pop"
+                else sort="abc"
                     s_was=1
                 fi;;
-            u)
+        u)
                 untag=1;;
 	esac
     done
@@ -216,7 +258,7 @@ shift $(($OPTIND - 1))
 filename="$1"; shift
 
 if [[ ! "$filename" ]]
-then echo >&2 "Un/Tag what? Run 'tag -h' for usage information"
+then errcho "Un/Tag what? Run 'tag -h' for usage information"
     exit 1
 fi
 
@@ -226,7 +268,7 @@ if (cd "$filename" 2> /dev/null)
 then filename="`cd \"$filename\"; pwd -P`"
 elif [[ "${filename##*/}" != '.' &&  "${filename##*/}" != '..' ]] && (cd "${filename%/*}" 2> /dev/null)
 then filename="`cd \"${filename%/*}\"; pwd -P`/${filename##*/}"
-else echo >&2 "Cannot reach the directory of $filename"
+else errcho "Cannot reach the directory of $filename"
     exit 2
 fi
 
@@ -241,9 +283,9 @@ if [[ $cwd_tb ]]
 then wd="`pwd -P`"
     # Creating a tagbase in the current directory
     if [[ ! -e "$wd/$tb_dir" ]]
-    then if mkdir -pv "$wd/$tb_dir" && chmod -vv a-w "$wd/$tb_dir"
-        then echo >&2 "Tagbase for $wd created"
-        else echo >&2 "Error creating tagbase at $wd/$tb_dir!"
+    then if shout mkdir -p "$wd/$tb_dir/$tag_sym" && chmod a-w "$wd/$tb_dir"
+        then errcho "Tagbase for $wd created"
+        else errcho "Error creating tagbase at $wd/$tb_dir!"
             exit 2
         fi
     fi
@@ -275,18 +317,18 @@ act_tbs=()
 
 for tb in "${tbs[@]}"
 do  if [[ -w "$tb" || -e "$tb/lock.pid" ]]
-    then echo >&2 "$tb is open, someone or something is working on it!"
+    then errcho "$tb is open, someone or something is working on it!"
         err=3  # TODO warning
     elif chmod u+w "$tb" && set -o noclobber && echo "$$" > "$tb/lock.pid"
     then act_tbs[${#act_tbs[@]}]="$tb"
-    else echo >&2 "Error locking $tb!"
+    else errcho "Error locking $tb!"
         err=3  # TODO warning
     fi
 done
 
 
 (( ${#act_tbs[@]} == 0 )) && \
-    echo >&2 "No tagbases found (or created) and locked, boring!" && \
+    errcho "No tagbases found (or created) and locked, boring!" && \
     err=2
 
 
@@ -325,12 +367,14 @@ function tag_step() {
     IFS='/'
 # TODO FS operations error checking
     if [[ $append ]]
-    then mkdir -p "$tb/${tags[*]}"
-        ln -s "`breadcrumbs ${#tags[@]}`/$mainlink" "$tb/${tags[*]}/$mainlink"
+    then shout mkdir -p "$tb/${tags[*]}/$tag_sym"
+        # the line above and the line below are intentionally fail-fast
+        shout-q ln -s "`breadcrumbs ${#tags[@]}`/../$tag_sym/$mainlink" \
+                      "$tb/${tags[*]}/$tag_sym/$mainlink"
     elif [[ $remove ]]
-    then if [[ -L "$tb/${tags[*]}/$mainlink" ]]  # silently ignore missing tags
-        then rm "$tb/${tags[*]}/$mainlink"
-            rmdir -p "$tb/${tags[*]}" 2> /dev/null  # TODO yuck!
+    then if [[ -L "$tb/${tags[*]}/$tag_sym/$mainlink" ]]  # ignore missing tags
+        then shout rm "$tb/${tags[*]}/$tag_sym/$mainlink"
+            shout-q rmdir -p "$tb/${tags[*]}/$tag_sym"
         fi
     fi
     unset IFS
@@ -360,12 +404,13 @@ do
 
 ### Determine the taglink name (and the current tags)
     IFS='/'
-    for taglink in `ls -d "$tb/${filename##*/}"* 2> /dev/null`
+    for taglink in `ls -d "$tb/$tag_sym/${filename##*/}"* 2> /dev/null`
     do  
-        tmp_tgt="`readlink \"$tb/${taglink##*/}\"`"
-        old_tags=(${tmp_tgt%/*})
+        tmp_tgt="`readlink \"$tb/$tag_sym/${taglink##*/}\"`"
+        tmp_tgt="${tmp_tgt#../}"           #
+        old_tags=(${tmp_tgt%/$tag_sym/*})  # removing the "terminating null tag"
         if [[ "`readlink \"$tb/$tmp_tgt\"`" \
-            == "`breadcrumbs ${#old_tags[@]}`/$rel_path" ]]
+            == "`breadcrumbs ${#old_tags[@]}`/../$rel_path" ]]
         then mainlink="${taglink##*/}"
             break
         fi
@@ -430,19 +475,24 @@ do
             new_tags[${#new_tags[@]}]="$tag"
         done
     fi
+
     
 ## Create the master and the main link
     IFS='/'
-# TODO FS operations error checking
+    [[ $debug ]] && errcho "Old: ${old_tags[*]}" && errcho "New: ${new_tags[*]}"
     if ((${#old_tags[@]} > 0))
-    then rm "$tb/${old_tags[*]}/$mainlink" "$tb/$mainlink"
-        rmdir -p "$tb/${old_tags[*]}" 2> /dev/null  # TODO yuck!
+    then shout-q rm "$tb/${old_tags[*]}/$tag_sym/$mainlink"  # convert to
+        shout ln -s "`breadcrumbs ${#old_tags[@]}`/../$tag_sym/$mainlink" \
+                    "$tb/${old_tags[*]}/$tag_sym/$mainlink"  # utility taglink
+        shout-q rm "$tb/${new_tags[*]}/$tag_sym/$mainlink" \
+                   "$tb/$tag_sym/$mainlink"
     fi
     if ((${#new_tags[@]} > 0))
-    then mkdir -p "$tb/${new_tags[*]}"
-        ln -sf "`breadcrumbs ${#new_tags[@]}`/$rel_path" \
-            "$tb/${new_tags[*]}/$mainlink"  # TODO yuck? -f for removing tags
-        ln -s "${new_tags[*]}/$mainlink" "$tb/$mainlink"
+    then shout mkdir -p "$tb/${new_tags[*]}/$tag_sym"
+        shout ln -s "`breadcrumbs ${#new_tags[@]}`/../$rel_path" \
+                    "$tb/${new_tags[*]}/$tag_sym/$mainlink"
+        shout ln -s "../${new_tags[*]}/$tag_sym/$mainlink" \
+                    "$tb/$tag_sym/$mainlink"
     fi
     unset IFS
 
@@ -459,17 +509,17 @@ for tb in "${act_tbs[@]}"
 do  if [[ "`cat \"$tb/lock.pid\"`" != "$$" ]] ||
         ! rm "$tb/lock.pid" ||
         ! chmod u-w "$tb"
-    then echo >&2 "Error unlocking $tb!"
+    then errcho "Error unlocking $tb!"
         err=2
     fi
 done
 
+[[ $err ]] && exit $err
 
 # REPORT
 
-if [[ ! $err ]]
-then for tag in "${all_tags[@]}"
-    do  [[ "${tag:0:1}" == '-' ]] && echo "${tag:1}"
-    done
-else exit $err
-fi
+for tag in "${all_tags[@]}"
+do  [[ "${tag:0:1}" == '-' ]] && echo "${tag:1}"
+done
+
+exit 0
