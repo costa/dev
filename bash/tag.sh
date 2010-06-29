@@ -136,15 +136,12 @@
 # PREFIX=$HOME       # or # PREFIX=$HOME/local  # -- locally, without sudo!
 # PREFIX=/usr        # On Darwin
 # PREFIX=/usr/local  # On a common UNIX
-# sudo bash -c "cp tag.sh $PREFIX/share/ && ln -s $PREFIX/share/tag.sh $PREFIX/bin/tag && echo '#"\!"/bin/sh^$PREFIX/bin/tag -u \"\$@\"' | tr ^ '\n' | dd of=$PREFIX/bin/untag 2> /dev/null && chmod a+x $PREFIX/share/tag.sh $PREFIX/bin/untag"
+# sudo bash -c "cp tag.sh $PREFIX/share/ && echo '#"\!"/bin/sh^$PREFIX/bin/tag -u \"\$@\"' | tr ^ '\n' | dd of=$PREFIX/bin/untag 2> /dev/null && chmod a+x $PREFIX/share/tag.sh $PREFIX/bin/untag && ln -s $PREFIX/share/tag.sh $PREFIX/bin/tag"
 #
 #
 # UNINSTALL
-# set your prefix first, then run the line below
+# set your prefix first (see above), then run the line below (w/ or w/o sudo)
 #
-# PREFIX="$HOME"     # locally
-# PREFIX=/usr        # On Darwin
-# PREFIX=/usr/local  # On a common UNIX
 # sudo rm $PREFIX/bin/tag $PREFIX/bin/untag $PREFIX/share/tag.sh
 
 

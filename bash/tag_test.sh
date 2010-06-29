@@ -102,4 +102,5 @@ then errcho "$errs tests FAILED. Leaving the tag_test.d directories for inspecti
 chmod -R u+w tag_test.d* && rm -R tag_test.d* # afterwards"
 exit 666
 else chmod -R u+w tag_test.d* && rm -R tag_test.d*
+    errcho "All the tests PASSED. Write more tests."
 fi
