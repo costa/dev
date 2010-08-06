@@ -1,0 +1,15 @@
+#!/bin/bash
+#lslD() { # It's like... ls -ld for all path elements
+    for node in "$@"
+    do [ "${node##/*}" ] && node="$PWD/$node"
+        while [[ "${node%/}" != "$node" || "${node##*/}" == "." ]]
+        do node="${node%/}"
+            node="${node%/.}"
+        done
+while [ "$node" ]
+        do ls -ld "$node"
+            node="${node%/*}"
+        done
+ls -ld / # :)
+    done
+#}
