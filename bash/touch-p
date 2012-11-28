@@ -1,0 +1,5 @@
+#!/bin/bash
+for node in "$@"
+do [ "${node%/*}" != "$node" ] && mkdir -p "${node%/*}"
+  touch "$node"
+done
