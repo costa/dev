@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]
+then
+  echo "SOFT MOVE: moves a single path to a new *absolute* location (creating directories as needed)"
+  echo "USAGE:     mv-p_ln-s PATHNAME ABSOLUTE_PATH"
+  echo "           so PATHNAME will be a symlink pointing to ABSOLUTE_PATH where the contents of PATHNAME will sit"
+  exit 1
+fi
+
+touch-p $2
+mv $1 $2
+ln -s $2 $1
