@@ -16,6 +16,7 @@ server.modules              = (
 
 EOF
 echo "server.document-root        = \"`pwd`\"" >> $conf
+echo "dir-listing.activate        = \"enable\"" >> $conf
 cat >> $conf <<EOF
 mimetype.assign             = (
   ".pdf"          =>      "application/pdf",
